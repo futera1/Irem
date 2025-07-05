@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>İrem için Çok Özel Bir Sürpriz!</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&family=Dancing+Script:wght@700&family=Pacifico&family=Caveat&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #ff4d6d;
+            --secondary-color: #ffc75f;
+            --bg-color: #000;
+        }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; font-family: 'Montserrat', sans-serif;
+            background-color: var(--bg-color);
+        }
+
+        .scene-wrapper {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; justify-content: center;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.7s ease-in-out;
+            background-color: #000;
+        }
+        .scene-wrapper.visible {
+            opacity: 1; visibility: visible;
+        }
+
+        .background-frame {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%;
+            border: none;
+        }
+        
+        #intro-screen { z-index: 500; cursor: pointer; align-items: center; }
+        #start-prompt { color: #fff; text-align: center; animation: pulse 2s infinite; }
+        #start-prompt h1 { font-size: 2em; }
+        #start-prompt p { font-size: 5em; margin: 0; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        #intro-video { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s; }
+        #intro-video.playing { opacity: 1; }
+
+        .video-container {
+            position: relative;
+            width: 90vw; max-width: 450px;
+            z-index: 10;
+            /* TIKLAMA SORUNU ÇÖZÜMÜ: Tıklamaların içinden geçmesine izin ver */
+            pointer-events: none;
+        }
+        #sad-scene-wrapper .video-container,
+        #happy-scene-wrapper .video-container {
+            align-self: center;
+        }
+        .content-video {
+            width: 100%;
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+        }
+
+        /* --- ÜZGÜN SAHNE DÜZELTMELERİ --- */
+        #sad-bg-frame { 
+            z-index: 1;
+            /* TIKLAMA SORUNU ÇÖZÜMÜ: Arka planın tıklamaları almasını sağla */
+            pointer-events: auto;
+        }
+        #sad-cat-frame {
+            position: absolute;
+            bottom: 0; right: -190px;
+            width: 800px;
+            height: 600px;
+            z-index: 11;
+            border: none;
+            pointer-events: none;
+            transform-origin: bottom right;
+            transform: scale(1.2); /* YENİ BOYUT: 1.3 */
+            overflow: hidden; /* KAYDIRMA ÇUBUKLARI KALDIRILDI (CSS) */
+        }
+
+        /* --- MUTLU SAHNE DÜZELTMELERİ --- */
+        #happy-scene-wrapper { align-items: center; }
+        #happy-bg-frame { z-index: 1; pointer-events: none; }
+        #happy-frame {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 150%; 
+            height: 150%;
+            transform: translate(-50%, -50%);
+            z-index: 11;
+            border: none;
+            pointer-events: none;
+        }
+        #happy-text-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 25; pointer-events: none; }
+        .happy-text, .balloon { pointer-events: all; }
+        .happy-text { position: absolute; font-size: 2.5em; opacity: 0; animation: floatUpAndAway 8s ease-out forwards; bottom: -100px; text-shadow: 1px 1px 3px rgba(0,0,0,0.2); white-space: nowrap; cursor: pointer; padding: 10px 20px; }
+        @keyframes floatUpAndAway { 0% { transform: translateY(0) rotate(var(--start-rotation)) scale(0.8); opacity: 1; } 100% { transform: translateY(-110vh) rotate(var(--end-rotation)) scale(1.2); opacity: 0; } }
+        .balloon { position: absolute; bottom: -150px; width: 60px; height: 85px; background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.5), transparent 70%); background-color: var(--balloon-color); border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%; opacity: 0; animation: rise var(--rise-duration) linear forwards, sway 3s ease-in-out infinite alternate; z-index: 20; cursor: pointer; }
+        .balloon.popping { animation: none !important; transform: scale(1.4) !important; opacity: 0 !important; transition: transform 0.15s ease-out, opacity 0.15s ease-out; }
+        @keyframes rise{ 0%{bottom:-150px;opacity:0} 10%{opacity:0.9} 100%{bottom:110vh;opacity:0} }
+        @keyframes sway{ from{transform:translateX(-15px) rotate(-5deg)} to{transform:translateX(15px) rotate(5deg)} }
+        .confetti-piece { position: fixed; width: 8px; height: 16px; background-color: var(--piece-color); opacity: 1; animation: fall-spin 1.5s ease-out forwards; z-index: 100; pointer-events: none; }
+        .confetti-piece.circle { border-radius: 50%; height: 8px; }
+        @keyframes fall-spin{ 0%{transform:translate(0,0) rotate(0deg) scale(1);opacity:1} 100%{transform:translate(var(--tx,0px),var(--ty,150px)) rotate(var(--r,360deg)) scale(0);opacity:0} }
+        
+        /* --- FİNAL SAHNESİ DÜZELTMELERİ --- */
+        #triumph-scene-wrapper {
+            align-items: flex-start;
+        }
+        #triumph-bg-spiral-frame { z-index: 1; }
+        #triumph-image-container { 
+            padding-top: 10vh;
+            z-index: 2; 
+        }
+        #triumph-image { width: 90vw; max-width: 400px; border-radius: 20px; box-shadow: 0 10px 60px rgba(0,0,0,0.7); border: 3px solid var(--secondary-color); opacity: 0; animation: fadeInZoom 1.5s 0.5s ease-out forwards; }
+        #triumph-bg-hearts-frame { z-index: 3; pointer-events: all; }
+        #final-message { position: absolute; bottom: 10%; width: 100%; font-size: 2.5em; font-weight: bold; color: white; text-align: center; text-shadow: 3px 3px 6px rgba(0,0,0,0.5); z-index: 4; opacity: 0; animation: fadeInZoom 1.5s 1.5s ease-out forwards; }
+        @keyframes fadeInZoom { from { opacity: 0; transform: scale(0.8); } to { opacity: 1; transform: scale(1); } }
+    </style>
+</head>
+<body>
+
+    <div id="intro-screen" class="scene-wrapper visible">
+        <div id="start-prompt"><h1>Sürprizi Başlat</h1><p>🎁</p></div>
+        <video id="intro-video" src="intro.mp4" playsinline></video>
+    </div>
+
+    <div id="sad-scene-wrapper" class="scene-wrapper">
+        <iframe class="background-frame" id="sad-bg-frame" src="arkaplan uzgun yagmurlu.html"></iframe>
+        <div class="video-container">
+            <video id="sad-video" class="content-video" src="uzgun.mp4" playsinline></video>
+        </div>
+        <iframe id="sad-cat-frame" src="alt uzgun kedi.html" scrolling="no"></iframe>
+    </div>
+
+    <div id="happy-scene-wrapper" class="scene-wrapper">
+        <iframe class="background-frame" id="happy-bg-frame" src="mutlu arkaplan kalp.html"></iframe>
+        <div class="video-container">
+            <video id="happy-video" class="content-video" src="mutlu.mp4" playsinline></video>
+            <iframe id="happy-frame" src="cerceve kalp.html" scrolling="no"></iframe>
+        </div>
+        <div id="happy-text-container"></div>
+    </div>
+    
+    <div id="triumph-scene-wrapper" class="scene-wrapper">
+        <iframe class="background-frame" id="triumph-bg-spiral-frame" src="spiral kalp arkaplan.html"></iframe>
+        <div id="triumph-image-container">
+            <img id="triumph-image" src="https://i.hizliresim.com/qg6tko1.jpg" alt="Birincilik Kanıtı">
+        </div>
+        <iframe class="background-frame" id="triumph-bg-hearts-frame" src="mutlu arkaplan kalp.html"></iframe>
+        <div id="final-message">İyi ki Doğdun Kankam!</div>
+    </div>
+
+
+    <script>
+        // --- Element Referansları ---
+        const introScreen = document.getElementById('intro-screen');
+        const startPrompt = document.getElementById('start-prompt');
+        const introVideo = document.getElementById('intro-video');
+        const sadSceneWrapper = document.getElementById('sad-scene-wrapper');
+        const sadVideo = document.getElementById('sad-video');
+        const happySceneWrapper = document.getElementById('happy-scene-wrapper');
+        const happyVideo = document.getElementById('happy-video');
+        const triumphSceneWrapper = document.getElementById('triumph-scene-wrapper');
+        const happyTextContainer = document.getElementById('happy-text-container');
+        
+        // --- Değişkenler ve Ayarlar ---
+        const balloonColors = ['#ff4d6d', '#ffc75f', '#7b2cbf', '#48bfe3', '#56ab2f', '#f78c6b'];
+        const happyTextColors = ['#ff4d6d', '#ffc75f', '#7b2cbf', '#48bfe3', '#56ab2f', '#f78c6b'];
+        const happyTextFonts = ["'Dancing Script', cursive", "'Pacifico', cursive", "'Caveat', cursive"];
+        let balloonInterval, happyTextInterval;
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // --- Fonksiyonlar ---
+        function playPopSound() {
+            if(!audioCtx || audioCtx.state === 'suspended') return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+            gain.gain.setValueAtTime(0.5, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.3);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        }
+
+        function switchScene(hideScene, showScene) {
+            hideScene.classList.remove('visible');
+            showScene.classList.add('visible');
+        }
+        
+        function createConfettiPiece(x, y, color) {
+            const piece = document.createElement('div');
+            piece.className = 'confetti-piece';
+            if (Math.random() < 0.5) piece.classList.add('circle');
+            piece.style.setProperty('--piece-color', color);
+            piece.style.left = `${x}px`; piece.style.top = `${y}px`;
+            const angle = Math.random() * Math.PI * 2, distance = Math.random() * 100 + 50;
+            const tx = Math.cos(angle) * distance, ty = Math.sin(angle) * distance + Math.random() * 50;
+            const rot = Math.random() * 720 - 360;
+            piece.style.setProperty('--tx', `${tx}px`); piece.style.setProperty('--ty', `${ty}px`);
+            piece.style.setProperty('--r', `${rot}deg`);
+            document.body.appendChild(piece);
+            setTimeout(() => piece.remove(), 1500);
+        }
+
+        function popBalloon(balloon) {
+            if (balloon.classList.contains('popping')) return;
+            playPopSound();
+            balloon.classList.add('popping');
+            const rect = balloon.getBoundingClientRect();
+            // GÖRSEL PATLAMA EFEKTİ GÜÇLENDİRİLDİ
+            for (let i = 0; i < 50; i++) {
+                createConfettiPiece(rect.left + rect.width / 2, rect.top + rect.height / 2, balloon.style.getPropertyValue('--balloon-color'));
+            }
+            setTimeout(() => balloon.remove(), 200);
+        }
+
+        function popHappyText(textElement) {
+            playPopSound();
+            const rect = textElement.getBoundingClientRect();
+            for (let i = 0; i < 50; i++) {
+                createConfettiPiece(rect.left + rect.width / 2, rect.top + rect.height / 2, textElement.style.getPropertyValue('--color'));
+            }
+            textElement.remove();
+        }
+
+        function createHappyText() {
+            const textEl = document.createElement('div');
+            textEl.className = 'happy-text';
+            textEl.textContent = "İYİ Kİ DOĞDUN İREM";
+            textEl.style.setProperty('--color', happyTextColors[Math.floor(Math.random() * happyTextColors.length)]);
+            textEl.style.setProperty('--x', `${Math.random() * 70 + 15}vw`);
+            textEl.style.setProperty('--start-rotation', `${Math.random() * 20 - 10}deg`);
+            textEl.style.fontFamily = happyTextFonts[Math.floor(Math.random() * happyTextFonts.length)];
+            happyTextContainer.appendChild(textEl);
+            setTimeout(() => textEl.remove(), 8000);
+        }
+
+        function createBalloon() {
+            const balloon = document.createElement('div');
+            balloon.className = 'balloon';
+            const color = balloonColors[Math.floor(Math.random() * balloonColors.length)];
+            balloon.style.setProperty('--balloon-color', color);
+            balloon.style.setProperty('--rise-duration', `${6 + Math.random() * 6}s`);
+            balloon.style.left = `${Math.random() * 90}vw`;
+            document.body.appendChild(balloon);
+            setTimeout(() => { if (!balloon.classList.contains('popping')) balloon.remove(); }, 12000);
+        }
+
+        // --- Olay Dinleyicileri (Event Listeners) ---
+        introScreen.addEventListener('click', () => {
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+            startPrompt.style.display = 'none';
+            introVideo.classList.add('playing');
+            introVideo.play().catch(() => {
+                switchScene(introScreen, sadSceneWrapper);
+                sadVideo.play();
+            });
+        }, { once: true });
+
+        introVideo.addEventListener('ended', () => {
+            switchScene(introScreen, sadSceneWrapper);
+            sadVideo.play();
+        });
+
+        sadVideo.addEventListener('ended', () => {
+            switchScene(sadSceneWrapper, happySceneWrapper);
+            happyVideo.play();
+            happyTextInterval = setInterval(createHappyText, 600);
+            balloonInterval = setInterval(createBalloon, 700);
+        });
+
+        happyVideo.addEventListener('ended', () => {
+            clearInterval(happyTextInterval);
+            clearInterval(balloonInterval);
+            switchScene(happySceneWrapper, triumphSceneWrapper);
+        });
+
+        document.addEventListener('click', (e) => {
+            if (happySceneWrapper.classList.contains('visible')) {
+                if (e.target.classList.contains('balloon')) {
+                    popBalloon(e.target);
+                }
+                if (e.target.classList.contains('happy-text')) {
+                    popHappyText(e.target);
+                }
+            }
+        });
+    </script>
+</body>
+</html>

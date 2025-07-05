@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Yağmurda Yürüyen Adam</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #111;
+        }
+
+        #container canvas, .man {
+            position: absolute;
+        }
+
+        #man1 {
+            top: 50%; /* JS ile dinamik olarak ayarlanacak */
+            left: 25%;
+            transform: scale(1.5); /* 3 KAT BÜYÜTÜLDÜ */
+            cursor: pointer;
+        }
+
+        .man {
+            width: 200px;
+            margin-top: 0px;
+            height: 360px;
+        }
+
+        .head {
+            width: 70px;
+            height: 70px;
+            background-color: #444;
+            border-radius: 50%;
+            animation-name: body-animation;
+            animation-duration: 4s;
+            animation-iteration-count: infinite;
+            animation-timing-function: ease-in-out;
+        }
+
+        .body {
+            height: 144px;
+            width: 62px;
+            background-color: #444;
+            border-radius: 100% 20% 0 0;
+            transform: skewX(-2deg);
+            position: relative;
+            left: -50px;
+            animation-name: body-animation;
+            animation-duration: 4s;
+            animation-iteration-count: infinite;
+            animation-timing-function: ease-in-out;
+        }
+
+        .foot {
+            width: 40px;
+            height: 14px;
+            border-radius: 10px 80% 4px 4px;
+            transform: skewX(5deg);
+            background-color: #444;
+            display: inline-block;
+            animation-name: foot;
+            animation-duration: 1.8s;
+            animation-iteration-count: infinite;
+            animation-timing-function: ease-in-out;
+        }
+
+        .foot:last-child {
+            margin-left: -40px;
+            animation-delay: .9s;
+        }
+
+        .feet {
+            text-align: left;
+            position: relative;
+            top: 100px;
+            left: -66px;
+        }
+
+        .feet::before {
+            width: 120px;
+            height: 8px;
+            border-radius: 50%;
+            content: "";
+            background: rgba(0,0,0,.1);
+            position: absolute;
+            bottom: -2px;
+            left: -16px;
+            animation-name: shadow;
+            animation-duration: 3s;
+            animation-iteration-count: infinite;
+            animation-timing-function: ease-in-out;
+        }
+
+        @keyframes foot {
+            20% { transform: translate3d(34px, -16px, 0) rotate(4deg); }
+            26% { transform: translate3d(34px, -10px, 4) rotate(0deg); }
+            40% { transform: translate3d(56px, -6px, 0) rotate(-6deg); }
+            44% { transform: translate3d(56px, 0, 0) rotate(0deg); }
+        }
+
+        @keyframes body-animation {
+            25% { transform: translateY(5px); }
+            50% { transform: translateY(0); }
+            75% { transform: translateY(5px); }
+        }
+
+        @keyframes shadow {
+            25% { transform: scale(1.1); }
+            75% { transform: scale(.96); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="container">
+        <canvas id="canvas"></canvas>
+        <div class="man" id="man1">
+            <div class="head"></div>
+            <div class="body"></div>
+            <div class="feet">
+                <div class="foot"></div>
+                <div class="foot"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        "use strict";
+        var W = window.innerWidth, H = window.innerHeight;
+        var canvas = document.getElementById("canvas");
+        var ctx = canvas.getContext("2d");
+        var rainIntensity = 1;
+        var maxRadius = 2;
+        var speed = 5;
+        var textMaxSpeed = -0.5;
+        var gravity = 0.3;
+        var wind = 0;
+        var circleArr;
+        var miniCircleArr;
+        var startDate = new Date();
+        var timeControl = 0.7;
+        var clr = 34;
+        var background = "linear-gradient(#333, #111)";
+        var words = [];
+        var showThoughts = false;
+
+        document.getElementById("man1").addEventListener("click", function() {
+            showThoughts = !showThoughts;
+        });
+        
+        // YENİDEN KONUMLANDIRMA FONKSİYONU
+        function positionMan() {
+            H = window.innerHeight;
+            // Büyütülmüş adamın (yüksekliği ~540px) ayaklarının görünmesi için konum ayarlandı
+            document.getElementById("man1").style.top = H - (540 - 44) + "px";
+        }
+
+        window.addEventListener("resize", function() {
+            W = window.innerWidth;
+            H = window.innerHeight;
+            canvas.width = W;
+            canvas.height = H;
+            positionMan(); // Yeniden konumlandırma fonksiyonunu çağır
+        });
+
+        function lightning() { clr = 125; }
+
+        function drawBuilding(h, n, color) {
+            var y = H - h;
+            var w = W / n + 1;
+            var gap = w / n + 1;
+            var x = gap;
+            for (var v = 0; v < n; v++) {
+                var grd = ctx.createLinearGradient(x + w / 2, y, x + w / 2, y + h);
+                grd.addColorStop(0, color);
+                grd.addColorStop(1, "#111");
+                ctx.beginPath();
+                ctx.rect(x, y, w, h);
+                ctx.fillStyle = grd;
+                ctx.fill();
+                ctx.closePath();
+                x += w + gap;
+            }
+        }
+
+        function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min)) + min; }
+        
+        var Word = function(string) {
+            this.string = string.toUpperCase();
+            this.speed = Math.random() * textMaxSpeed;
+            this.size = getRandomInt(15, 30);
+            this.x = Math.random() * W;
+            this.y = getRandomInt(H / 4, H / 2);
+        }
+        Word.prototype.draw = function() {
+            ctx.font = this.size + "px impact";
+            ctx.fillStyle = "rgba(200, 200, 200, 0.7)";
+            ctx.fillText(this.string, this.x, this.y);
+        }
+        Word.prototype.update = function() {
+            this.x += this.speed;
+            if (this.x < -ctx.measureText(this.string).width) { this.x = W + 100; }
+            this.draw();
+        }
+
+        var Circle = function(x, y, r, dx, dy) {
+            this.x = x; this.y = y; this.r = r;
+            this.velocity = { x: dx, y: dy };
+        };
+        Circle.prototype.draw = function() {
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y);
+            ctx.lineTo(this.x + wind, this.y + getRandomInt(5, 15));
+            ctx.lineWidth = "0.8";
+            ctx.strokeStyle = "rgba(170, 170, 170, 0.8)";
+            ctx.stroke();
+        }
+        Circle.prototype.update = function() {
+            if (this.y + this.r > H) {
+                this.r = 0; 
+                this.shatter();
+            } else {
+                this.velocity.y += gravity;
+            }
+            this.x += this.velocity.x;
+            this.y += this.velocity.y;
+            this.draw();
+        }
+        Circle.prototype.shatter = function() {
+            for (var v = 0; v < 8; v++) {
+                miniCircleArr.push(new MiniCircle(this.x, this.y, 1));
+            }
+        }
+
+        var MiniCircle = function(x, y, r) {
+            Circle.call(this, x, y, r);
+            this.velocity = { x: getRandomInt(-5, 5), y: getRandomInt(-15, 15) };
+            this.ttl = 25; this.opacity = 1;
+        }
+        MiniCircle.prototype = Object.create(Circle.prototype);
+        MiniCircle.prototype.constructor = MiniCircle;
+        MiniCircle.prototype.draw = function() {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.r, Math.PI * 2, false);
+            ctx.fillStyle = "rgba(255, 255, 255, " + this.opacity + ")";
+            ctx.fill();
+        }
+        MiniCircle.prototype.update = function() {
+            if (this.y + this.r >= H) { this.velocity.y = -this.velocity.y * 1; }
+            else { this.velocity.y += gravity; }
+            this.x += this.velocity.x; this.y += this.velocity.y;
+            this.ttl -= 1; this.opacity -= 1 / this.ttl;
+            this.draw();
+        }
+
+        function start() {
+            canvas.style.background = background;
+            canvas.width = W;
+            canvas.height = H;
+            positionMan(); // İlk konumlandırmayı yap
+
+            circleArr = [];
+            miniCircleArr = [];
+
+            setTimeout(lightning, 4000);
+            
+            // --- TÜRKÇE VE YENİ METİNLER ---
+            words = []; // Eskileri temizle
+            const yeniMetinler = [
+                "Kaybeden...", "BAŞARISIZLIK", "DEĞERSİZ", "Yalnız", "Hayal Kırıklığı",
+                "Neden?", "Nasıl?", "Irem", "Dogum", "Kimseee",
+                "MUTLULUK?", "Neşe", "Aşk", "Hayaller", "Umut", "Durma.", "Yapabilirsin",
+                "Hırslı Ol", "Sıradan olmak için uyanmadım", "Başarı"
+            ];
+            yeniMetinler.forEach(metin => words.push(new Word(metin)));
+            
+            update();
+        }
+
+        function update() {
+            requestAnimationFrame(update);
+            ctx.clearRect(0, 0, W, H);
+            drawBuilding(H / 1.2, 4, "#222");
+            if (showThoughts) {
+                words.forEach(word => word.update());
+            }
+
+            for (var v = circleArr.length - 1; v >= 0; v--) {
+                circleArr[v].update();
+                if (circleArr[v].r <= 0) { circleArr.splice(v, 1); }
+            }
+            for (var v = miniCircleArr.length - 1; v >= 0; v--) {
+                miniCircleArr[v].update();
+                if (miniCircleArr[v].ttl <= 0) { miniCircleArr.splice(v, 1); }
+            }
+
+            for (var v = 0; v < rainIntensity; v++) {
+                circleArr.push(new Circle(Math.random() * (W * 1.5) - (W*0.25), -20, Math.random() * maxRadius, wind, Math.random() * speed + 5));
+            }
+
+            let endDate = new Date();
+            let timeDiff = (endDate - startDate) / 1000;
+            if (timeDiff > timeControl) {
+                let windInc = wind <= -6 ? false : (wind >= 0 ? true : null);
+                if (windInc) wind -= 0.5;
+                else wind += 0.5;
+
+                if (wind <= -6 || wind >= 0) setTimeout(lightning, getRandomInt(1000, 4000));
+                
+                if (wind < -3) { timeControl = 0.5; rainIntensity = 3; } 
+                else if (wind >= -3 && wind < -1) { timeControl = 0.1; rainIntensity = 1; } 
+                else { timeControl = 4; rainIntensity = 6; }
+                startDate = endDate;
+            }
+
+            if (clr > 51) {
+                canvas.style.background = "linear-gradient(rgb(" + clr + "," + clr + "," + clr + "),#111)";
+                clr -= 2;
+            } else {
+                canvas.style.background = background;
+            }
+        }
+
+        start();
+    </script>
+</body>
+</html>
